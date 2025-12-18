@@ -3,7 +3,6 @@ package subscriber
 import (
 	"context"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -15,9 +14,9 @@ type Service struct {
 	reader *kafka.Reader
 }
 
-func New(addr, topic, groupID string) *Service {
+func New(addr []string, topic, groupID string) *Service {
 	cfg := kafka.ReaderConfig{
-		Brokers:         strings.Split(addr, ","),
+		Brokers:         addr,
 		Topic:           topic,
 		GroupID:         groupID,
 		MinBytes:        1e3,

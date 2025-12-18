@@ -81,56 +81,6 @@ func (q *Queries) CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventPa
 	return i, err
 }
 
-const delayOutboxEventsRetry = `-- name: DelayOutboxEventsRetry :many
-UPDATE outbox_events
-SET
-    attempts = attempts + 1,
-    next_retry_at = $1::timestamptz
-WHERE id = ANY($2::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
-`
-
-type DelayOutboxEventsRetryParams struct {
-	NextRetryAt time.Time
-	Ids         []uuid.UUID
-}
-
-func (q *Queries) DelayOutboxEventsRetry(ctx context.Context, arg DelayOutboxEventsRetryParams) ([]OutboxEvent, error) {
-	rows, err := q.db.QueryContext(ctx, delayOutboxEventsRetry, arg.NextRetryAt, pq.Array(arg.Ids))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []OutboxEvent
-	for rows.Next() {
-		var i OutboxEvent
-		if err := rows.Scan(
-			&i.ID,
-			&i.Topic,
-			&i.Key,
-			&i.Type,
-			&i.Version,
-			&i.Producer,
-			&i.Payload,
-			&i.Status,
-			&i.Attempts,
-			&i.CreatedAt,
-			&i.NextRetryAt,
-			&i.SentAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getOutboxEventByID = `-- name: GetOutboxEventByID :one
 SELECT id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 FROM outbox_events
@@ -219,6 +169,57 @@ RETURNING id, topic, key, type, version, producer, payload, status, attempts, cr
 
 func (q *Queries) MarkOutboxEventsAsFailed(ctx context.Context, ids []uuid.UUID) ([]OutboxEvent, error) {
 	rows, err := q.db.QueryContext(ctx, markOutboxEventsAsFailed, pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutboxEvent
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.Topic,
+			&i.Key,
+			&i.Type,
+			&i.Version,
+			&i.Producer,
+			&i.Payload,
+			&i.Status,
+			&i.Attempts,
+			&i.CreatedAt,
+			&i.NextRetryAt,
+			&i.SentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markOutboxEventsAsPending = `-- name: MarkOutboxEventsAsPending :many
+UPDATE outbox_events
+SET
+    status = 'pending',
+    attempts = attempts + 1,
+    next_retry_at = $1::timestamptz
+WHERE id = ANY($2::uuid[])
+RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
+`
+
+type MarkOutboxEventsAsPendingParams struct {
+	NextRetryAt time.Time
+	Ids         []uuid.UUID
+}
+
+func (q *Queries) MarkOutboxEventsAsPending(ctx context.Context, arg MarkOutboxEventsAsPendingParams) ([]OutboxEvent, error) {
+	rows, err := q.db.QueryContext(ctx, markOutboxEventsAsPending, arg.NextRetryAt, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}

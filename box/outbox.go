@@ -190,8 +190,8 @@ func (b Box) MarkOutboxEventsAsFailed(ctx context.Context, ids []uuid.UUID) ([]O
 	return events, nil
 }
 
-func (b Box) DelayOutboxEvents(ctx context.Context, ids []uuid.UUID, delay time.Duration) ([]OutboxEvent, error) {
-	res, err := b.queries.DelayOutboxEventsRetry(ctx, pgdb.DelayOutboxEventsRetryParams{
+func (b Box) MarkOutboxEventsAsPending(ctx context.Context, ids []uuid.UUID, delay time.Duration) ([]OutboxEvent, error) {
+	res, err := b.queries.MarkOutboxEventsAsPending(ctx, pgdb.MarkOutboxEventsAsPendingParams{
 		Ids:         ids,
 		NextRetryAt: time.Now().UTC().Add(delay),
 	})

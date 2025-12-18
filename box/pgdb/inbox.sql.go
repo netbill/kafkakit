@@ -81,56 +81,6 @@ func (q *Queries) CreateInboxEvent(ctx context.Context, arg CreateInboxEventPara
 	return i, err
 }
 
-const delayInboxEventsRetry = `-- name: DelayInboxEventsRetry :many
-UPDATE inbox_events
-SET
-    attempts = attempts + 1,
-    next_retry_at = $1::timestamptz
-WHERE id = ANY($2::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
-`
-
-type DelayInboxEventsRetryParams struct {
-	NextRetryAt time.Time
-	Ids         []uuid.UUID
-}
-
-func (q *Queries) DelayInboxEventsRetry(ctx context.Context, arg DelayInboxEventsRetryParams) ([]InboxEvent, error) {
-	rows, err := q.db.QueryContext(ctx, delayInboxEventsRetry, arg.NextRetryAt, pq.Array(arg.Ids))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []InboxEvent
-	for rows.Next() {
-		var i InboxEvent
-		if err := rows.Scan(
-			&i.ID,
-			&i.Topic,
-			&i.Key,
-			&i.Type,
-			&i.Version,
-			&i.Producer,
-			&i.Payload,
-			&i.Status,
-			&i.Attempts,
-			&i.CreatedAt,
-			&i.NextRetryAt,
-			&i.ProcessedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getInboxEventByID = `-- name: GetInboxEventByID :one
 SELECT id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 FROM inbox_events
@@ -174,6 +124,57 @@ RETURNING id, topic, key, type, version, producer, payload, status, attempts, cr
 
 func (q *Queries) GetPendingInboxEvents(ctx context.Context, limit int32) ([]InboxEvent, error) {
 	rows, err := q.db.QueryContext(ctx, getPendingInboxEvents, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InboxEvent
+	for rows.Next() {
+		var i InboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.Topic,
+			&i.Key,
+			&i.Type,
+			&i.Version,
+			&i.Producer,
+			&i.Payload,
+			&i.Status,
+			&i.Attempts,
+			&i.CreatedAt,
+			&i.NextRetryAt,
+			&i.ProcessedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const marInboxEventsAsPending = `-- name: MarInboxEventsAsPending :many
+UPDATE inbox_events
+SET
+    status = 'pending',
+    attempts = attempts + 1,
+    next_retry_at = $1::timestamptz
+WHERE id = ANY($2::uuid[])
+RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+`
+
+type MarInboxEventsAsPendingParams struct {
+	NextRetryAt time.Time
+	Ids         []uuid.UUID
+}
+
+func (q *Queries) MarInboxEventsAsPending(ctx context.Context, arg MarInboxEventsAsPendingParams) ([]InboxEvent, error) {
+	rows, err := q.db.QueryContext(ctx, marInboxEventsAsPending, arg.NextRetryAt, pq.Array(arg.Ids))
 	if err != nil {
 		return nil, err
 	}

@@ -52,9 +52,10 @@ SET
 WHERE id = ANY(sqlc.arg(ids)::uuid[])
 RETURNING *;
 
--- name: DelayOutboxEventsRetry :many
+-- name: MarkOutboxEventsAsPending :many
 UPDATE outbox_events
 SET
+    status = 'pending',
     attempts = attempts + 1,
     next_retry_at = sqlc.arg(next_retry_at)::timestamptz
 WHERE id = ANY(sqlc.arg(ids)::uuid[])

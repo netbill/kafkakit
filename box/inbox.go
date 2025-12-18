@@ -155,6 +155,23 @@ func (b Box) GetInboxEventByID(
 	return pgdbInboxEvent(res), nil
 }
 
+func (b Box) GetPendingInboxEvents(
+	ctx context.Context,
+	limit int32,
+) ([]InboxEvent, error) {
+	res, err := b.queries.GetPendingInboxEvents(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("get pending inbox events: %w", err)
+	}
+
+	events := make([]InboxEvent, 0, len(res))
+	for _, e := range res {
+		events = append(events, pgdbInboxEvent(e))
+	}
+
+	return events, nil
+}
+
 func (b Box) MarkInboxEventsAsProcessed(
 	ctx context.Context,
 	ids []uuid.UUID,
@@ -189,12 +206,12 @@ func (b Box) MarkInboxEventsAsFailed(
 	return events, nil
 }
 
-func (b Box) DelayInboxEvents(
+func (b Box) MarInboxEventsAsPending(
 	ctx context.Context,
 	ids []uuid.UUID,
 	delay time.Duration,
 ) ([]InboxEvent, error) {
-	res, err := b.queries.DelayInboxEventsRetry(ctx, pgdb.DelayInboxEventsRetryParams{
+	res, err := b.queries.MarInboxEventsAsPending(ctx, pgdb.MarInboxEventsAsPendingParams{
 		Ids:         ids,
 		NextRetryAt: time.Now().UTC().Add(delay),
 	})
