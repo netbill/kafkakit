@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/chains-lab/kafkakit/box/pgdb"
-	"github.com/chains-lab/kafkakit/header"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
+	"github.com/umisto/kafkakit/box/pgdb"
+	"github.com/umisto/kafkakit/header"
 )
 
 const (

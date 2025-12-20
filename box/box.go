@@ -3,7 +3,7 @@ package box
 import (
 	"database/sql"
 
-	"github.com/chains-lab/kafkakit/box/pgdb"
+	"github.com/umisto/kafkakit/box/pgdb"
 )
 
 type Box struct {

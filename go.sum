@@ -1,7 +1,7 @@
-github.com/chains-lab/ape v0.4.14 h1:isWDFutXAf13FOE5eCd0kp1UXynB90CebT97iaJp8Ps=
-github.com/chains-lab/ape v0.4.14/go.mod h1:1xFb/pocztb1NW6ghAMJxuez/nausXgnHs+68pCzolI=
-github.com/chains-lab/logium v0.1.2 h1:qRG3MHRJdjNw14G6QrbPVMJR4TCVR2XY+9+Z/p0dxw0=
-github.com/chains-lab/logium v0.1.2/go.mod h1:TH/XJsvzOgSykI7adeU7AzYezai60EFFtzWC84ycLCU=
+github.com/umisto/ape v0.4.14 h1:isWDFutXAf13FOE5eCd0kp1UXynB90CebT97iaJp8Ps=
+github.com/umisto/ape v0.4.14/go.mod h1:1xFb/pocztb1NW6ghAMJxuez/nausXgnHs+68pCzolI=
+github.com/umisto/logium v0.1.2 h1:qRG3MHRJdjNw14G6QrbPVMJR4TCVR2XY+9+Z/p0dxw0=
+github.com/umisto/logium v0.1.2/go.mod h1:TH/XJsvzOgSykI7adeU7AzYezai60EFFtzWC84ycLCU=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
