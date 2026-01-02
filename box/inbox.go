@@ -16,9 +16,10 @@ import (
 )
 
 const (
-	InboxStatusPending   = "pending"
-	InboxStatusProcessed = "processed"
-	InboxStatusFailed    = "failed"
+	InboxStatusPending    = "pending"
+	InboxStatusProcessed  = "processed"
+	InboxStatusProcessing = "processing"
+	InboxStatusFailed     = "failed"
 )
 
 type InboxEvent struct {
@@ -72,7 +73,6 @@ func (e InboxEvent) IsNil() bool {
 
 func (b Box) CreateInboxEvent(
 	ctx context.Context,
-	status string,
 	message kafka.Message,
 ) (InboxEvent, error) {
 	key := message.Key
@@ -102,35 +102,27 @@ func (b Box) CreateInboxEvent(
 	if !ok {
 		return InboxEvent{}, fmt.Errorf("missing %s header", header.EventVersion)
 	}
+	v64, err := strconv.ParseInt(string(eventVersionBytes), 10, 32)
+	if err != nil {
+		return InboxEvent{}, fmt.Errorf("invalid %s header", header.EventVersion)
+	}
+	eventVersion := int32(v64)
 
 	producer, ok := headers[header.Producer]
 	if !ok {
 		return InboxEvent{}, fmt.Errorf("missing %s header", header.Producer)
 	}
 
-	var eventVersion int32
-	if err = json.Unmarshal(eventVersionBytes, &eventVersion); err != nil {
-		return InboxEvent{}, fmt.Errorf("invalid %s header", header.EventVersion)
-	}
-
 	stmt := pgdb.CreateInboxEventParams{
-		ID:       eventID,
-		Topic:    topic,
-		Key:      string(key),
-		Type:     string(eventType),
-		Version:  eventVersion,
-		Producer: string(producer),
-		Payload:  value,
-		Status:   pgdb.InboxEventStatus(status),
-	}
-
-	switch status {
-	case InboxStatusPending:
-		stmt.NextRetryAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
-
-	case InboxStatusProcessed:
-		stmt.ProcessedAt = sql.NullTime{Time: time.Now().UTC(), Valid: true}
-		stmt.Attempts = 1
+		ID:          eventID,
+		Topic:       topic,
+		Key:         string(key),
+		Type:        string(eventType),
+		Version:     eventVersion,
+		Producer:    string(producer),
+		Payload:     value,
+		Status:      InboxStatusPending,
+		NextRetryAt: sql.NullTime{Time: time.Now().UTC(), Valid: true},
 	}
 
 	res, err := b.queries.CreateInboxEvent(ctx, stmt)
@@ -226,6 +218,22 @@ func (b Box) MarkInboxEventsAsPending(
 	}
 
 	return events, nil
+}
+
+func (b Box) UpdateInboxEventStatus(
+	ctx context.Context,
+	id uuid.UUID,
+	status string,
+) (InboxEvent, error) {
+	res, err := b.queries.UpdateInboxEventStatus(ctx, pgdb.UpdateInboxEventStatusParams{
+		ID:     id,
+		Status: pgdb.InboxEventStatus(status),
+	})
+	if err != nil {
+		return InboxEvent{}, fmt.Errorf("update inbox event status: %w", err)
+	}
+
+	return pgdbInboxEvent(res), nil
 }
 
 func pgdbInboxEvent(e pgdb.InboxEvent) InboxEvent {

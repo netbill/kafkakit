@@ -1,9 +1,11 @@
 package box
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/umisto/kafkakit/box/pgdb"
+	"github.com/umisto/pgx"
 )
 
 type Box struct {
@@ -16,4 +18,8 @@ func New(db *sql.DB) Box {
 		queries: pgdb.New(db),
 		db:      db,
 	}
+}
+
+func (b Box) Transaction(ctx context.Context, fn func(ctx context.Context) error) error {
+	return pgx.Transaction(b.db, ctx, fn)
 }

@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	OutboxStatusPending = "pending"
-	OutboxStatusSent    = "sent"
-	OutboxStatusFailed  = "failed"
+	OutboxStatusPending    = "pending"
+	OutboxStatusProcessing = "processing"
+	OutboxStatusSent       = "sent"
+	OutboxStatusFailed     = "failed"
 )
 
 type OutboxEvent struct {
@@ -71,7 +72,6 @@ func (e OutboxEvent) IsNil() bool {
 
 func (b Box) CreateOutboxEvent(
 	ctx context.Context,
-	status string,
 	message kafka.Message,
 ) (OutboxEvent, error) {
 	key := message.Key
@@ -101,34 +101,27 @@ func (b Box) CreateOutboxEvent(
 	if !ok {
 		return OutboxEvent{}, fmt.Errorf("missing %s header", header.EventVersion)
 	}
+	v64, err := strconv.ParseInt(string(eventVersionBytes), 10, 32)
+	if err != nil {
+		return OutboxEvent{}, fmt.Errorf("invalid %s header", header.EventVersion)
+	}
+	eventVersion := int32(v64)
 
 	producer, ok := headers[header.Producer]
 	if !ok {
 		return OutboxEvent{}, fmt.Errorf("missing %s header", header.Producer)
 	}
 
-	var eventVersion int32
-	if err = json.Unmarshal(eventVersionBytes, &eventVersion); err != nil {
-		return OutboxEvent{}, fmt.Errorf("invalid %s header", header.EventVersion)
-	}
-
 	stmt := pgdb.CreateOutboxEventParams{
-		ID:       eventID,
-		Topic:    topic,
-		Key:      string(key),
-		Type:     string(eventType),
-		Version:  eventVersion,
-		Producer: string(producer),
-		Payload:  value,
-		Status:   pgdb.OutboxEventStatus(status),
-	}
-
-	switch status {
-	case OutboxStatusPending:
-		stmt.NextRetryAt = sql.NullTime{Valid: true, Time: time.Now().UTC()}
-	case OutboxStatusSent:
-		stmt.SentAt = sql.NullTime{Valid: true, Time: time.Now().UTC()}
-		stmt.Attempts = 1
+		ID:          eventID,
+		Topic:       topic,
+		Key:         string(key),
+		Type:        string(eventType),
+		Version:     eventVersion,
+		Producer:    string(producer),
+		Payload:     value,
+		Status:      OutboxStatusPending,
+		NextRetryAt: sql.NullTime{Valid: true, Time: time.Now().UTC()},
 	}
 
 	res, err := b.queries.CreateOutboxEvent(ctx, stmt)

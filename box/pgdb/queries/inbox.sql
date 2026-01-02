@@ -15,6 +15,7 @@ INSERT INTO inbox_events (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9,  $10, $11
 )
+ON CONFLICT (id) DO NOTHING
 RETURNING *;
 
 -- name: GetInboxEventByID :one
@@ -48,7 +49,7 @@ RETURNING *;
 UPDATE inbox_events
 SET
     status = 'failed',
-    nrxt_retry_at = NULL
+    next_retry_at = NULL
 WHERE id = ANY(sqlc.arg(ids)::uuid[])
 RETURNING *;
 
@@ -60,3 +61,10 @@ SET
     next_retry_at = sqlc.arg(next_retry_at)::timestamptz
 WHERE id = ANY(sqlc.arg(ids)::uuid[])
 RETURNING *;
+
+-- name: UpdateInboxEventStatus :one
+UPDATE inbox_events
+SET status = sqlc.arg(status)::inbox_event_status
+WHERE id = sqlc.arg(id)::uuid
+RETURNING *;
+

@@ -32,6 +32,7 @@ INSERT INTO outbox_events (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9,  $10, $11
 )
+ON CONFLICT (id) DO NOTHING
 RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 `
 

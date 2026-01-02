@@ -32,6 +32,7 @@ INSERT INTO inbox_events (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9,  $10, $11
 )
+ON CONFLICT (id) DO NOTHING
 RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
 
@@ -213,7 +214,7 @@ const markInboxEventsAsFailed = `-- name: MarkInboxEventsAsFailed :many
 UPDATE inbox_events
 SET
     status = 'failed',
-    nrxt_retry_at = NULL
+    next_retry_at = NULL
 WHERE id = ANY($1::uuid[])
 RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
@@ -297,4 +298,36 @@ func (q *Queries) MarkInboxEventsAsProcessed(ctx context.Context, ids []uuid.UUI
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateInboxEventStatus = `-- name: UpdateInboxEventStatus :one
+UPDATE inbox_events
+SET status = $1::inbox_event_status
+WHERE id = $2::uuid
+RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+`
+
+type UpdateInboxEventStatusParams struct {
+	Status InboxEventStatus
+	ID     uuid.UUID
+}
+
+func (q *Queries) UpdateInboxEventStatus(ctx context.Context, arg UpdateInboxEventStatusParams) (InboxEvent, error) {
+	row := q.db.QueryRowContext(ctx, updateInboxEventStatus, arg.Status, arg.ID)
+	var i InboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.Topic,
+		&i.Key,
+		&i.Type,
+		&i.Version,
+		&i.Producer,
+		&i.Payload,
+		&i.Status,
+		&i.Attempts,
+		&i.CreatedAt,
+		&i.NextRetryAt,
+		&i.ProcessedAt,
+	)
+	return i, err
 }
