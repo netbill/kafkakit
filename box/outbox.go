@@ -124,7 +124,7 @@ func (b Box) CreateOutboxEvent(
 		NextRetryAt: sql.NullTime{Valid: true, Time: time.Now().UTC()},
 	}
 
-	res, err := b.queries.CreateOutboxEvent(ctx, stmt)
+	res, err := b.queries(ctx).CreateOutboxEvent(ctx, stmt)
 	if err != nil {
 		return OutboxEvent{}, fmt.Errorf("create outbox event: %w", err)
 	}
@@ -133,7 +133,7 @@ func (b Box) CreateOutboxEvent(
 }
 
 func (b Box) GetOutboxEventByID(ctx context.Context, id uuid.UUID) (OutboxEvent, error) {
-	res, err := b.queries.GetOutboxEventByID(ctx, id)
+	res, err := b.queries(ctx).GetOutboxEventByID(ctx, id)
 	if err != nil {
 		return OutboxEvent{}, fmt.Errorf("get outbox event by id: %w", err)
 	}
@@ -142,7 +142,7 @@ func (b Box) GetOutboxEventByID(ctx context.Context, id uuid.UUID) (OutboxEvent,
 }
 
 func (b Box) GetPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error) {
-	res, err := b.queries.GetPendingOutboxEvents(ctx, limit)
+	res, err := b.queries(ctx).GetPendingOutboxEvents(ctx, limit)
 	if err != nil {
 		return nil, fmt.Errorf("get pending outbox events: %w", err)
 	}
@@ -156,7 +156,7 @@ func (b Box) GetPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxE
 }
 
 func (b Box) MarkOutboxEventsSent(ctx context.Context, ids []uuid.UUID) ([]OutboxEvent, error) {
-	res, err := b.queries.MarkOutboxEventsAsSent(ctx, ids)
+	res, err := b.queries(ctx).MarkOutboxEventsAsSent(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("mark outbox events as sent: %w", err)
 	}
@@ -170,7 +170,7 @@ func (b Box) MarkOutboxEventsSent(ctx context.Context, ids []uuid.UUID) ([]Outbo
 }
 
 func (b Box) MarkOutboxEventsAsFailed(ctx context.Context, ids []uuid.UUID) ([]OutboxEvent, error) {
-	res, err := b.queries.MarkOutboxEventsAsFailed(ctx, ids)
+	res, err := b.queries(ctx).MarkOutboxEventsAsFailed(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("mark outbox events as failed: %w", err)
 	}
@@ -184,7 +184,7 @@ func (b Box) MarkOutboxEventsAsFailed(ctx context.Context, ids []uuid.UUID) ([]O
 }
 
 func (b Box) MarkOutboxEventsAsPending(ctx context.Context, ids []uuid.UUID, delay time.Duration) ([]OutboxEvent, error) {
-	res, err := b.queries.MarkOutboxEventsAsPending(ctx, pgdb.MarkOutboxEventsAsPendingParams{
+	res, err := b.queries(ctx).MarkOutboxEventsAsPending(ctx, pgdb.MarkOutboxEventsAsPendingParams{
 		Ids:         ids,
 		NextRetryAt: time.Now().UTC().Add(delay),
 	})

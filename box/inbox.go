@@ -125,7 +125,7 @@ func (b Box) CreateInboxEvent(
 		NextRetryAt: sql.NullTime{Time: time.Now().UTC(), Valid: true},
 	}
 
-	res, err := b.queries.CreateInboxEvent(ctx, stmt)
+	res, err := b.queries(ctx).CreateInboxEvent(ctx, stmt)
 	if err != nil {
 		return InboxEvent{}, err
 	}
@@ -137,7 +137,7 @@ func (b Box) GetInboxEventByID(
 	ctx context.Context,
 	id uuid.UUID,
 ) (InboxEvent, error) {
-	res, err := b.queries.GetInboxEventByID(ctx, id)
+	res, err := b.queries(ctx).GetInboxEventByID(ctx, id)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return InboxEvent{}, nil
@@ -152,7 +152,7 @@ func (b Box) GetPendingInboxEvents(
 	ctx context.Context,
 	limit int32,
 ) ([]InboxEvent, error) {
-	res, err := b.queries.GetPendingInboxEvents(ctx, limit)
+	res, err := b.queries(ctx).GetPendingInboxEvents(ctx, limit)
 	if err != nil {
 		return nil, fmt.Errorf("get pending inbox events: %w", err)
 	}
@@ -169,7 +169,7 @@ func (b Box) MarkInboxEventsAsProcessed(
 	ctx context.Context,
 	ids []uuid.UUID,
 ) ([]InboxEvent, error) {
-	res, err := b.queries.MarkInboxEventsAsProcessed(ctx, ids)
+	res, err := b.queries(ctx).MarkInboxEventsAsProcessed(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("mark inbox events as processed: %w", err)
 	}
@@ -186,7 +186,7 @@ func (b Box) MarkInboxEventsAsFailed(
 	ctx context.Context,
 	ids []uuid.UUID,
 ) ([]InboxEvent, error) {
-	res, err := b.queries.MarkInboxEventsAsFailed(ctx, ids)
+	res, err := b.queries(ctx).MarkInboxEventsAsFailed(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("mark inbox events as failed: %w", err)
 	}
@@ -204,7 +204,7 @@ func (b Box) MarkInboxEventsAsPending(
 	ids []uuid.UUID,
 	delay time.Duration,
 ) ([]InboxEvent, error) {
-	res, err := b.queries.MarInboxEventsAsPending(ctx, pgdb.MarInboxEventsAsPendingParams{
+	res, err := b.queries(ctx).MarInboxEventsAsPending(ctx, pgdb.MarInboxEventsAsPendingParams{
 		Ids:         ids,
 		NextRetryAt: time.Now().UTC().Add(delay),
 	})
@@ -225,7 +225,7 @@ func (b Box) UpdateInboxEventStatus(
 	id uuid.UUID,
 	status string,
 ) (InboxEvent, error) {
-	res, err := b.queries.UpdateInboxEventStatus(ctx, pgdb.UpdateInboxEventStatusParams{
+	res, err := b.queries(ctx).UpdateInboxEventStatus(ctx, pgdb.UpdateInboxEventStatusParams{
 		ID:     id,
 		Status: pgdb.InboxEventStatus(status),
 	})

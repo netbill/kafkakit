@@ -9,15 +9,17 @@ import (
 )
 
 type Box struct {
-	queries *pgdb.Queries
-	db      *sql.DB
+	db *sql.DB
 }
 
 func New(db *sql.DB) Box {
 	return Box{
-		queries: pgdb.New(db),
-		db:      db,
+		db: db,
 	}
+}
+
+func (b Box) queries(ctx context.Context) *pgdb.Queries {
+	return pgdb.New(pgx.Exec(b.db, ctx))
 }
 
 func (b Box) Transaction(ctx context.Context, fn func(ctx context.Context) error) error {
