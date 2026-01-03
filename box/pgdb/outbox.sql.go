@@ -33,7 +33,7 @@ INSERT INTO outbox_events (
     $7, $8, $9,  $10, $11
 )
 ON CONFLICT (id) DO NOTHING
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 `
 
 type CreateOutboxEventParams struct {
@@ -67,6 +67,7 @@ func (q *Queries) CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventPa
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
+		&i.Seq,
 		&i.Topic,
 		&i.Key,
 		&i.Type,
@@ -83,7 +84,7 @@ func (q *Queries) CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventPa
 }
 
 const getOutboxEventByID = `-- name: GetOutboxEventByID :one
-SELECT id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
+SELECT id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 FROM outbox_events
 WHERE id = $1
 `
@@ -93,6 +94,7 @@ func (q *Queries) GetOutboxEventByID(ctx context.Context, id uuid.UUID) (OutboxE
 	var i OutboxEvent
 	err := row.Scan(
 		&i.ID,
+		&i.Seq,
 		&i.Topic,
 		&i.Key,
 		&i.Type,
@@ -115,12 +117,12 @@ WHERE id IN (
     SELECT id
     FROM outbox_events
     WHERE status = 'pending'
-       AND next_retry_at <= now() AT TIME ZONE 'UTC'
-    ORDER BY created_at
+      AND (next_retry_at IS NULL OR next_retry_at <= now() AT TIME ZONE 'UTC')
+    ORDER BY seq ASC
     LIMIT $1
     FOR UPDATE SKIP LOCKED
 )
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 `
 
 func (q *Queries) GetPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error) {
@@ -134,6 +136,7 @@ func (q *Queries) GetPendingOutboxEvents(ctx context.Context, limit int32) ([]Ou
 		var i OutboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,
@@ -165,7 +168,7 @@ SET
     status = 'failed',
     next_retry_at = NULL
 WHERE id = ANY($1::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 `
 
 func (q *Queries) MarkOutboxEventsAsFailed(ctx context.Context, ids []uuid.UUID) ([]OutboxEvent, error) {
@@ -179,6 +182,7 @@ func (q *Queries) MarkOutboxEventsAsFailed(ctx context.Context, ids []uuid.UUID)
 		var i OutboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,
@@ -211,7 +215,7 @@ SET
     attempts = attempts + 1,
     next_retry_at = $1::timestamptz
 WHERE id = ANY($2::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 `
 
 type MarkOutboxEventsAsPendingParams struct {
@@ -230,6 +234,7 @@ func (q *Queries) MarkOutboxEventsAsPending(ctx context.Context, arg MarkOutboxE
 		var i OutboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,
@@ -261,7 +266,7 @@ SET
     status = 'sent',
     sent_at = now() AT TIME ZONE 'UTC'
 WHERE id = ANY($1::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, sent_at
 `
 
 func (q *Queries) MarkOutboxEventsAsSent(ctx context.Context, ids []uuid.UUID) ([]OutboxEvent, error) {
@@ -275,6 +280,7 @@ func (q *Queries) MarkOutboxEventsAsSent(ctx context.Context, ids []uuid.UUID) (
 		var i OutboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,

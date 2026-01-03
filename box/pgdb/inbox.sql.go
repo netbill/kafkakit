@@ -33,7 +33,7 @@ INSERT INTO inbox_events (
     $7, $8, $9,  $10, $11
 )
 ON CONFLICT (id) DO NOTHING
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
 
 type CreateInboxEventParams struct {
@@ -67,6 +67,7 @@ func (q *Queries) CreateInboxEvent(ctx context.Context, arg CreateInboxEventPara
 	var i InboxEvent
 	err := row.Scan(
 		&i.ID,
+		&i.Seq,
 		&i.Topic,
 		&i.Key,
 		&i.Type,
@@ -83,7 +84,7 @@ func (q *Queries) CreateInboxEvent(ctx context.Context, arg CreateInboxEventPara
 }
 
 const getInboxEventByID = `-- name: GetInboxEventByID :one
-SELECT id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+SELECT id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 FROM inbox_events
 WHERE id = $1
 `
@@ -93,6 +94,7 @@ func (q *Queries) GetInboxEventByID(ctx context.Context, id uuid.UUID) (InboxEve
 	var i InboxEvent
 	err := row.Scan(
 		&i.ID,
+		&i.Seq,
 		&i.Topic,
 		&i.Key,
 		&i.Type,
@@ -115,12 +117,12 @@ WHERE id IN (
     SELECT id
     FROM inbox_events
     WHERE status = 'pending'
-        AND (next_retry_at IS NULL OR next_retry_at <= now() AT TIME ZONE 'UTC')
-    ORDER BY created_at
+      AND (next_retry_at IS NULL OR next_retry_at <= now() AT TIME ZONE 'UTC')
+    ORDER BY seq ASC
     LIMIT $1
     FOR UPDATE SKIP LOCKED
 )
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
 
 func (q *Queries) GetPendingInboxEvents(ctx context.Context, limit int32) ([]InboxEvent, error) {
@@ -134,6 +136,7 @@ func (q *Queries) GetPendingInboxEvents(ctx context.Context, limit int32) ([]Inb
 		var i InboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,
@@ -166,7 +169,7 @@ SET
     attempts = attempts + 1,
     next_retry_at = $1::timestamptz
 WHERE id = ANY($2::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
 
 type MarInboxEventsAsPendingParams struct {
@@ -185,6 +188,7 @@ func (q *Queries) MarInboxEventsAsPending(ctx context.Context, arg MarInboxEvent
 		var i InboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,
@@ -216,7 +220,7 @@ SET
     status = 'failed',
     next_retry_at = NULL
 WHERE id = ANY($1::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
 
 func (q *Queries) MarkInboxEventsAsFailed(ctx context.Context, ids []uuid.UUID) ([]InboxEvent, error) {
@@ -230,6 +234,7 @@ func (q *Queries) MarkInboxEventsAsFailed(ctx context.Context, ids []uuid.UUID) 
 		var i InboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,
@@ -261,7 +266,7 @@ SET
     status = 'processed',
     processed_at = now() AT TIME ZONE 'UTC'
 WHERE id = ANY($1::uuid[])
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
 
 func (q *Queries) MarkInboxEventsAsProcessed(ctx context.Context, ids []uuid.UUID) ([]InboxEvent, error) {
@@ -275,6 +280,7 @@ func (q *Queries) MarkInboxEventsAsProcessed(ctx context.Context, ids []uuid.UUI
 		var i InboxEvent
 		if err := rows.Scan(
 			&i.ID,
+			&i.Seq,
 			&i.Topic,
 			&i.Key,
 			&i.Type,
@@ -304,7 +310,7 @@ const updateInboxEventStatus = `-- name: UpdateInboxEventStatus :one
 UPDATE inbox_events
 SET status = $1::inbox_event_status
 WHERE id = $2::uuid
-RETURNING id, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
+RETURNING id, seq, topic, key, type, version, producer, payload, status, attempts, created_at, next_retry_at, processed_at
 `
 
 type UpdateInboxEventStatusParams struct {
@@ -317,6 +323,7 @@ func (q *Queries) UpdateInboxEventStatus(ctx context.Context, arg UpdateInboxEve
 	var i InboxEvent
 	err := row.Scan(
 		&i.ID,
+		&i.Seq,
 		&i.Topic,
 		&i.Key,
 		&i.Type,

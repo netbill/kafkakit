@@ -23,6 +23,7 @@ const (
 
 type OutboxEvent struct {
 	ID          uuid.UUID
+	Seq         int64
 	Topic       string
 	Key         string
 	Type        string
@@ -203,6 +204,7 @@ func (b Box) MarkOutboxEventsAsPending(ctx context.Context, ids []uuid.UUID, del
 func pgdbOutboxEvent(e pgdb.OutboxEvent) OutboxEvent {
 	res := OutboxEvent{
 		ID:        e.ID,
+		Seq:       e.Seq,
 		Topic:     e.Topic,
 		Key:       e.Key,
 		Type:      e.Type,

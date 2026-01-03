@@ -24,6 +24,7 @@ const (
 
 type InboxEvent struct {
 	ID          uuid.UUID
+	Seq         int64
 	Topic       string
 	Key         string
 	Type        string
@@ -239,6 +240,7 @@ func (b Box) UpdateInboxEventStatus(
 func pgdbInboxEvent(e pgdb.InboxEvent) InboxEvent {
 	res := InboxEvent{
 		ID:        e.ID,
+		Seq:       e.Seq,
 		Topic:     e.Topic,
 		Key:       e.Key,
 		Type:      e.Type,

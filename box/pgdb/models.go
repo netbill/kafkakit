@@ -104,6 +104,7 @@ func (ns NullOutboxEventStatus) Value() (driver.Value, error) {
 
 type InboxEvent struct {
 	ID          uuid.UUID
+	Seq         int64
 	Topic       string
 	Key         string
 	Type        string
@@ -119,6 +120,7 @@ type InboxEvent struct {
 
 type OutboxEvent struct {
 	ID          uuid.UUID
+	Seq         int64
 	Topic       string
 	Key         string
 	Type        string

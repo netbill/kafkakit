@@ -30,8 +30,8 @@ WHERE id IN (
     SELECT id
     FROM outbox_events
     WHERE status = 'pending'
-       AND next_retry_at <= now() AT TIME ZONE 'UTC'
-    ORDER BY created_at
+      AND (next_retry_at IS NULL OR next_retry_at <= now() AT TIME ZONE 'UTC')
+    ORDER BY seq ASC
     LIMIT $1
     FOR UPDATE SKIP LOCKED
 )
